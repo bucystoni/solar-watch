@@ -1,5 +1,6 @@
 package com.codecool.solarwatch.service;
 
+import com.codecool.solarwatch.exception.CityNotFoundException;
 import com.codecool.solarwatch.model.GeoData;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +35,7 @@ public class GeocodingService {
                 .body(new ParameterizedTypeReference<List<GeoData>>() {});
 
         if (geoDataList.isEmpty()) {
-            throw new RuntimeException("City not found: " + city);
+            throw new CityNotFoundException("City not found: " + city);
         }
 
         return geoDataList.getFirst();

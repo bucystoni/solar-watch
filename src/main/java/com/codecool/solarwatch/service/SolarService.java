@@ -26,6 +26,4 @@ public class SolarService {
                 .retrieve()
                 .body(SolarData.class);
     }
-
-
 }
