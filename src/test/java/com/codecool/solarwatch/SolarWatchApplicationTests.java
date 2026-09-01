@@ -6,11 +6,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class SolarWatchApplicationTests {
 
-    /*@Test
+    @Test
     void contextLoads() {
-    }*/
-
-
-
+    }
 
 }
