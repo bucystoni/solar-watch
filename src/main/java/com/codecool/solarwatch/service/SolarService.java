@@ -3,27 +3,29 @@ package com.codecool.solarwatch.service;
 import com.codecool.solarwatch.model.SolarData;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.Duration;
 
 @Service
 public class SolarService {
 
-    private final RestClient restClient;
+    private final WebClient webClient;
 
     public SolarService(
-            @Qualifier("solarRestClient") RestClient restClient
+            @Qualifier("solarWebClient") WebClient webClient
     ) {
-        this.restClient = restClient;
+        this.webClient = webClient;
     }
 
     public SolarData getSolarData(double latitude, double longitude) {
-        return restClient.get()
+        return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2")
                         .queryParam("lat", latitude)
                         .queryParam("lng", longitude)
                         .build())
                 .retrieve()
-                .body(SolarData.class);
+                .bodyToMono(SolarData.class).block(Duration.ofSeconds(5));
     }
 }

@@ -6,25 +6,26 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.util.List;
 
 @Service
 public class GeocodingService {
-    private final RestClient restClient;
+    private final WebClient webClient;
 
     @Value("${openweather.api-key}")
     private String apiKey;
 
     public GeocodingService(
-            @Qualifier("openWeatherRestClient") RestClient restClient
+            @Qualifier("openWeatherWebClient") WebClient webClient
     ) {
-        this.restClient = restClient;
+        this.webClient = webClient;
     }
 
     public GeoData getGeoData(String city) {
-        List<GeoData> geoDataList = restClient.get()
+        List<GeoData> geoDataList = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/geo/1.0/direct")
                         .queryParam("q", city)
@@ -32,9 +33,9 @@ public class GeocodingService {
                         .queryParam("appid", apiKey)
                         .build())
                 .retrieve()
-                .body(new ParameterizedTypeReference<List<GeoData>>() {});
+                .bodyToMono(new ParameterizedTypeReference<List<GeoData>>() {}).block(Duration.ofSeconds(5));
 
-        if (geoDataList.isEmpty()) {
+        if (geoDataList == null || geoDataList.isEmpty()) {
             throw new CityNotFoundException("City not found: " + city);
         }
 
