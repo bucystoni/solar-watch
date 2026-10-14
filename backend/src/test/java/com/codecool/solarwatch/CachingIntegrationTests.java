@@ -40,7 +40,7 @@ public class CachingIntegrationTests {
     @BeforeEach
     void setup() {
         when(geocodingService.getGeoData(anyString()))
-                .thenReturn(new GeoData("1013", "Budapest", 1, 2, "Hungary"));
+                .thenReturn(new GeoData("Pest", "Budapest", 1, 2, "Hungary"));
 
         OffsetDateTime sunrise = OffsetDateTime.parse("2026-01-15T07:30:00+01:00");
         OffsetDateTime sunset = OffsetDateTime.parse("2026-01-15T21:30:00+01:00");

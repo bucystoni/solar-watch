@@ -1,4 +1,7 @@
 package com.codecool.solarwatch.model;
 
-public record GeoData(String zip, String name, double lat, double lon, String country) {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record GeoData(String state, String name, double lat, double lon, String country) {
 }

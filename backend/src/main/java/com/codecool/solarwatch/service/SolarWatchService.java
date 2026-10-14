@@ -38,7 +38,7 @@ public class SolarWatchService {
         return cityRepository.findByName(name)
                 .orElseGet(() -> {
                     GeoData geoData = geocodingService.getGeoData(name);
-                    return cityRepository.save(new City(geoData.name(), geoData.lon(), geoData.lat(), geoData.zip(), geoData.country()));
+                    return cityRepository.save(new City(geoData.name(), geoData.lon(), geoData.lat(), geoData.state(), geoData.country()));
                 });
     }
 
