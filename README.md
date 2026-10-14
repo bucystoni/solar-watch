@@ -6,24 +6,29 @@
 ![React 19](https://img.shields.io/badge/React-19-61DAFB)
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1)
 
-A full-stack web app that tells you when the sun rises and sets in any city. Type a city name, and a Spring Boot REST API resolves it to coordinates, fetches sunrise and sunset times from public APIs, and caches both in PostgreSQL, so repeat lookups never leave the database. Access is protected by stateless JWT authentication with user and admin roles.
+A full-stack web app that tells you when the sun rises and sets in any city. Type a city name, and a Spring Boot REST API resolves it to coordinates, fetches sunrise and sunset times from public APIs, and caches both in PostgreSQL, so repeat lookups never leave the database. Times are shown on the city's own clock, not the viewer's. Access is protected by stateless JWT authentication with user and admin roles.
 
 ## Features
 
 - Register, log in, and stay logged in across page reloads
-- Look up today's sunrise and sunset for any city by name
+- Look up sunrise and sunset for any city, for today or any given date
+- Times are shown in the city's local timezone, and "today" means today in that city
+- City lookup is case-insensitive, and alternate spellings (e.g. `Budapeszt`) resolve to the same cached city
 - Cities and solar times are cached in PostgreSQL after the first lookup
 - Role-based access: every logged-in user can read, only admins can create, update or delete cities
 - An admin account is seeded automatically on first startup
 
 ## Technical highlights
 
-- **Read-through cache in the database.** `SolarWatchService` checks PostgreSQL first and only calls the external APIs on a miss, then stores the result. A unique constraint on `(city_id, date)` keeps one `SolarTime` row per city per day. An integration test verifies that two identical requests reach the external services only once.
+- **Read-through cache in the database.** `SolarWatchService` checks PostgreSQL first and only calls the external APIs on a miss, then stores the result. A unique constraint on `(city_id, date)` keeps one `SolarTime` row per city per day. On a city miss, the geocoder's canonical name is checked again before inserting, so different spellings of the same city never create duplicate rows.
+- **Timezone-correct times.** PostgreSQL's `timestamp with time zone` stores only the instant, not the original offset. So the app stores the instant, stores the city's IANA timezone (e.g. `Asia/Tokyo`) separately, and converts at the edge: in the response DTO on the backend, and with `Intl` in the browser.
+- **Testable time.** The default date comes from an injected `java.time.Clock`, so tests can freeze time and verify city-local "today" across a date boundary.
+- **DTOs at the API boundary.** JPA entities never leave the service layer; endpoints return records such as `SolarTimeDto`, so storage changes don't leak into the API contract.
 - **Stateless JWT authentication.** A custom `OncePerRequestFilter` validates the `Bearer` token on every request. Server-side sessions are disabled, passwords are hashed with BCrypt, and tokens are HMAC-SHA signed with a one-hour expiry.
 - **Role-based authorization.** `USER` and `ADMIN` roles, enforced at method level with `@PreAuthorize` on the city write endpoints.
-- **Deterministic integration tests.** `@SpringBootTest` with MockMvc against an in-memory H2 database, and the external API clients replaced by `@MockitoBean`, so the suite needs no network, Docker or API key.
+- **Deterministic integration tests.** `@SpringBootTest` with MockMvc against an in-memory H2 database, with the external API clients replaced by `@MockitoBean` and the clock by `@TestBean`, so the suite needs no network, Docker or API key.
 - **Centralized error handling.** A `@ControllerAdvice` maps domain exceptions to HTTP status codes (`404` for an unknown city, `409` for a taken username).
-- **Containerized and CI-checked.** Docker Compose runs PostgreSQL and the API, and GitHub Actions builds and tests the backend on every push and pull request to `main`. Secrets come from environment variables and never enter Git.
+- **Containerized and CI-checked.** Docker Compose runs PostgreSQL and the API, and the API waits until a healthcheck reports the database as ready. GitHub Actions runs the backend tests and the frontend lint and build on every push and pull request to `main`. Secrets come from environment variables and never enter Git.
 
 ## Tech stack
 
@@ -48,18 +53,20 @@ sequenceDiagram
 
     UI->>API: GET /api/solardata?city=Budapest (Bearer token)
     Note over API: JwtAuthenticationFilter validates the token
-    API->>DB: find City by name
+    API->>DB: find City by name (case-insensitive)
     alt city not cached
         API->>Geo: geocode city name
-        Geo-->>API: name, lat, lon, country
-        API->>DB: save City
+        Geo-->>API: canonical name, lat, lon, state, country
+        API->>DB: find City by canonical name, save if missing
     end
+    Note over API: resolve date (default: today in the city's timezone)
     API->>DB: find SolarTime by city and date
     alt solar time not cached
-        API->>Sun: sunrise and sunset for lat, lon
-        Sun-->>API: sunrise, sunset
-        API->>DB: save SolarTime
+        API->>Sun: sunrise and sunset for lat, lon, date
+        Sun-->>API: sunrise, sunset, timezone
+        API->>DB: save SolarTime, store the city's timezone
     end
+    Note over API: convert times to the city's timezone
     API-->>UI: 200 OK with city, date, sunrise, sunset
 ```
 
@@ -67,10 +74,10 @@ sequenceDiagram
 
 ```
 solar-watch/
-├── .github/workflows/maven.yml   # CI: build and test the backend
+├── .github/workflows/maven.yml   # CI: backend tests, frontend lint and build
 ├── backend/                      # Spring Boot REST API
 │   ├── src/main/java/com/codecool/solarwatch/
-│   │   ├── configuration/        # security, WebClients, admin seeding
+│   │   ├── configuration/        # security, WebClients, clock, admin seeding
 │   │   ├── controller/           # REST endpoints
 │   │   ├── dto/                  # request/response records
 │   │   ├── exception/            # custom exceptions and global handler
@@ -83,7 +90,7 @@ solar-watch/
 │   └── .env.example
 └── frontend/                     # React + Vite single-page app
     └── src/
-        ├── context/              # AuthContext (token state)
+        ├── context/              # auth context, AuthProvider, useAuth hook
         ├── components/           # ProtectedRoute, SolarTime
         └── pages/                # Login, Register, SolarWatch, NotFound
 ```
@@ -112,8 +119,6 @@ Then fill in `backend/.env`:
 | `JWT_SECRET` | Token signing key. Must be **Base64-encoded and at least 32 bytes**; generate one with `openssl rand -base64 32` (works in Git Bash) |
 | `OPENWEATHER_API_KEY` | Your OpenWeatherMap key (new keys can take a while to activate) |
 | `ADMIN_PASSWORD` | Password for the auto-created `admin` user |
-
-
 
 ### 2. Start the backend
 
@@ -148,8 +153,6 @@ npm run dev
 
 Open http://localhost:5173 and register a user, or log in as `admin` with your `ADMIN_PASSWORD`.
 
-
-
 ### Ports
 
 | Service | Host port |
@@ -166,7 +169,7 @@ Every endpoint except `/api/auth/**` requires an `Authorization: Bearer <token>`
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Public | Create a user. `201`, or `409` if the username is taken |
 | `POST` | `/api/auth/login` | Public | Returns `{ "token": "..." }`. `200`, or `401` on bad credentials |
-| `GET` | `/api/solardata?city={name}` | User | Today's sunrise and sunset. `404` if the city can't be found |
+| `GET` | `/api/solardata?city={name}&date={YYYY-MM-DD}` | User | Sunrise and sunset for a date, in the city's timezone. `date` is optional and defaults to today in the city. `404` if the city can't be found, `400` for a malformed date |
 | `GET` | `/api/cities` | User | List cached cities |
 | `GET` | `/api/cities/{id}` | User | Get one city |
 | `POST` | `/api/cities` | Admin | Create a city |
@@ -180,25 +183,30 @@ cd backend
 ./mvnw test        # Windows: .\mvnw.cmd test
 ```
 
-The suite covers the register-and-login round trip, `401` for unauthenticated requests, `403` vs `201` when a user or an admin creates a city, and the caching behaviour. The same tests run in CI.
+The suite covers the register-and-login round trip, `401` for unauthenticated requests, `403` vs `201` when a user or an admin creates a city, the caching behaviour, case-insensitive and alternate-spelling city lookups, forwarding of the requested date, and city-local "today" with a frozen clock. The same tests run in CI.
 
 ## Design notes
 
 - **The database is the cache.** Sunrise and sunset for a given city and date never change, so results are stored permanently rather than in an in-memory cache. They survive restarts and stay browsable through the city endpoints.
+- **Store the instant, store the zone, convert at the edge.** An offset like `+09:00` is a snapshot that can be lost along the way (PostgreSQL drops it), and it can't tell you the offset for other dates because of daylight saving time. A zone like `Asia/Tokyo` holds the rules, so the app keeps only instants in the database and applies the city's zone when building responses.
 - **JWT in `localStorage`.** Simple and a natural fit for a separate SPA, but readable by any script running on the page. An `httpOnly` cookie would be safer against XSS and is a candidate for a later iteration.
 
 ## Known issues
 
-- The optional `date` query parameter is accepted but not yet forwarded to sunrise-sunset.org, so a request for another date stores today's times under that date.
-- City lookup is case-sensitive: `budapest` misses the cached `Budapest` and creates a duplicate row.
-- The geocoding response's `state` field isn't mapped yet, so `City.state` stays empty.
-- Sunrise and sunset aren't displayed in the city's local timezone.
+- Cities are identified by name only, so same-name cities in different
+  countries (e.g. Paris, France and Paris, Texas) share one entry.
+- The first lookup of a new city without a `date` resolves "today" in UTC,
+  because the city's timezone is only known after that lookup. Near local
+  midnight this can return the previous or next day's times.
+- Errors from the external APIs (timeouts, invalid API key) and invalid input
+  return a generic `500` instead of a specific status code.
+- The frontend doesn't log out when the token expires; an expired session
+  only shows an error message.
 - The API base URL (`http://localhost:8080`) and the CORS origin are hardcoded.
 
 ## Roadmap
 
 - Fix the known issues above
-- Return a DTO from `/api/solardata` instead of the JPA entity
 - Add the frontend to Docker Compose, and a multi-stage Dockerfile so no local build is needed
 - UI styling
 
