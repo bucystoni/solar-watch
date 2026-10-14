@@ -2,6 +2,7 @@ package com.codecool.solarwatch;
 
 import com.codecool.solarwatch.model.GeoData;
 import com.codecool.solarwatch.model.SolarData;
+import com.codecool.solarwatch.repository.CityRepository;
 import com.codecool.solarwatch.service.GeocodingService;
 import com.codecool.solarwatch.service.SolarService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -30,6 +32,9 @@ public class CachingIntegrationTests {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private CityRepository cityRepository;
 
     @MockitoBean
     private GeocodingService geocodingService;
@@ -50,18 +55,39 @@ public class CachingIntegrationTests {
     @Test
     @WithMockUser(roles = "USER")
     void getSolarData_callsExternalApiOnce_whenRequestedTwice() throws Exception {
-        mockMvc.perform(get("/api/solardata")
-                        .param("city", "Budapest"))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get("/api/solardata")
-                        .param("city", "Budapest"))
-                .andExpect(status().isOk());
+        performGetSolarDataRequest("Budapest");
+        performGetSolarDataRequest("Budapest");
 
 
         verify(geocodingService, times(1)).getGeoData(anyString());
 
         verify(solarService, times(1)).getSolarData(anyDouble(), anyDouble());
 
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void getSolarData_reusesCachedCity_whenNameDiffersOnlyInCase() throws Exception {
+        performGetSolarDataRequest("Budapest");
+        performGetSolarDataRequest("budapest");
+
+        verify(geocodingService, times(1)).getGeoData(anyString());
+        assertThat(cityRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void getSolarData_reusesExistingCity_whenAlternateSpellingResolvesToSameCity() throws Exception {
+        performGetSolarDataRequest("Budapest");
+        performGetSolarDataRequest("Budapeszt");
+
+        verify(geocodingService, times(2)).getGeoData(anyString());
+        assertThat(cityRepository.count()).isEqualTo(1);
+    }
+
+    private void performGetSolarDataRequest(String city) throws Exception {
+        mockMvc.perform(get("/api/solardata")
+                .param("city", city))
+                .andExpect(status().isOk());
     }
 }

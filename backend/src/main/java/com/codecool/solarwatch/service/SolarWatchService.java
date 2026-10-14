@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
 @Service
 public class SolarWatchService {
@@ -35,11 +36,9 @@ public class SolarWatchService {
     }
 
     private City getOrCreateCity(String name) {
-        return cityRepository.findByName(name)
-                .orElseGet(() -> {
-                    GeoData geoData = geocodingService.getGeoData(name);
-                    return cityRepository.save(new City(geoData.name(), geoData.lon(), geoData.lat(), geoData.state(), geoData.country()));
-                });
+        String normalizedName = name.trim().toLowerCase(Locale.ROOT);
+        return cityRepository.findByNameIgnoreCase(normalizedName)
+                .orElseGet(() -> fetchAndStoreCity(normalizedName));
     }
 
     private SolarTime getOrCreateSolarTime(City city, LocalDate date) {
@@ -48,5 +47,13 @@ public class SolarWatchService {
                     SolarData data = solarService.getSolarData(city.getLatitude(), city.getLongitude());
                     return solarTimeRepository.save(new SolarTime(date, data.sunrise(), data.sunset(), city));
                 });
+    }
+
+    private City fetchAndStoreCity(String query) {
+        GeoData geoData = geocodingService.getGeoData(query);
+        return cityRepository.findByNameIgnoreCase(geoData.name())
+                .orElseGet(() -> cityRepository.save(
+                        new City(geoData.name(), geoData.lon(), geoData.lat(),
+                                geoData.state(), geoData.country())));
     }
 }
