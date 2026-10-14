@@ -5,7 +5,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import SolarWatchPage from "./pages/SolarWatchPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import { useAuth } from './context/AuthContext.jsx';
+import {useAuth} from "./context/useAuth.js";
 
 
 function App() {
