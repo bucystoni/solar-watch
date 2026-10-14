@@ -1,10 +1,6 @@
 package com.codecool.solarwatch.controller;
 
-import com.codecool.solarwatch.model.GeoData;
-import com.codecool.solarwatch.model.SolarData;
 import com.codecool.solarwatch.model.SolarTime;
-import com.codecool.solarwatch.service.GeocodingService;
-import com.codecool.solarwatch.service.SolarService;
 import com.codecool.solarwatch.service.SolarWatchService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +14,9 @@ import java.time.LocalDate;
 public class SolarWatchController {
     private final SolarWatchService solarWatchService;
 
-
     public SolarWatchController(SolarWatchService solarWatchService) {
         this.solarWatchService = solarWatchService;
     }
-
 
     @GetMapping("/api/solardata")
     public ResponseEntity<?> getSolarData (@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
