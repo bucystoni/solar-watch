@@ -1,5 +1,6 @@
 package com.codecool.solarwatch.service;
 
+import com.codecool.solarwatch.dto.SolarTimeDto;
 import com.codecool.solarwatch.model.City;
 import com.codecool.solarwatch.model.GeoData;
 import com.codecool.solarwatch.model.SolarData;
@@ -27,12 +28,11 @@ public class SolarWatchService {
     }
 
     @Transactional
-    public SolarTime getSolarData(String cityName, LocalDate date) {
+    public SolarTimeDto getSolarData(String cityName, LocalDate date) {
         if (date == null) date = LocalDate.now();
 
         City city = getOrCreateCity(cityName);
-        return getOrCreateSolarTime(city, date);
-
+        return SolarTimeDto.from(getOrCreateSolarTime(city, date));
     }
 
     private City getOrCreateCity(String name) {

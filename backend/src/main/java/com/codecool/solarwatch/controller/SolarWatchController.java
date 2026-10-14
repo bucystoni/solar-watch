@@ -1,6 +1,6 @@
 package com.codecool.solarwatch.controller;
 
-import com.codecool.solarwatch.model.SolarTime;
+import com.codecool.solarwatch.dto.SolarTimeDto;
 import com.codecool.solarwatch.service.SolarWatchService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +19,10 @@ public class SolarWatchController {
     }
 
     @GetMapping("/api/solardata")
-    public ResponseEntity<?> getSolarData (@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+    public ResponseEntity<SolarTimeDto> getSolarData (@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                                            @RequestParam String city) {
 
-        SolarTime solarTime = solarWatchService.getSolarData(city, date);
+        SolarTimeDto solarTime = solarWatchService.getSolarData(city, date);
 
         return ResponseEntity.ok(solarTime);
     }
