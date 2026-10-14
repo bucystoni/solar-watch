@@ -1,6 +1,6 @@
 # SolarWatch
 
-[![Java CI with Maven](https://github.com/bucystoni/solar-watch/actions/workflows/maven.yml/badge.svg)](https://github.com/bucystoni/solar-watch/actions/workflows/maven.yml)
+[![CI](https://github.com/bucystoni/solar-watch/actions/workflows/maven.yml/badge.svg)](https://github.com/bucystoni/solar-watch/actions/workflows/maven.yml)
 ![Java 21](https://img.shields.io/badge/Java-21-007396)
 ![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot-4.1-6DB33F)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB)
