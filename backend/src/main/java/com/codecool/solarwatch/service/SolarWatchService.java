@@ -44,7 +44,7 @@ public class SolarWatchService {
     private SolarTime getOrCreateSolarTime(City city, LocalDate date) {
         return solarTimeRepository.findByCityAndDate(city, date)
                 .orElseGet(() -> {
-                    SolarData data = solarService.getSolarData(city.getLatitude(), city.getLongitude());
+                    SolarData data = solarService.getSolarData(city.getLatitude(), city.getLongitude(), date);
                     return solarTimeRepository.save(new SolarTime(date, data.sunrise(), data.sunset(), city));
                 });
     }

@@ -20,6 +20,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 import static org.mockito.ArgumentMatchers.anyDouble;
@@ -49,7 +50,7 @@ public class CachingIntegrationTests {
 
         OffsetDateTime sunrise = OffsetDateTime.parse("2026-01-15T07:30:00+01:00");
         OffsetDateTime sunset = OffsetDateTime.parse("2026-01-15T21:30:00+01:00");
-        when(solarService.getSolarData(anyDouble(), anyDouble())).thenReturn(new SolarData(sunrise, sunset));
+        when(solarService.getSolarData(anyDouble(), anyDouble(), any(LocalDate.class))).thenReturn(new SolarData(sunrise, sunset));
     }
 
     @Test
@@ -61,7 +62,7 @@ public class CachingIntegrationTests {
 
         verify(geocodingService, times(1)).getGeoData(anyString());
 
-        verify(solarService, times(1)).getSolarData(anyDouble(), anyDouble());
+        verify(solarService, times(1)).getSolarData(anyDouble(), anyDouble(), any(LocalDate.class));
 
     }
 
@@ -83,6 +84,18 @@ public class CachingIntegrationTests {
 
         verify(geocodingService, times(2)).getGeoData(anyString());
         assertThat(cityRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void getSolarData_requestsRequestedDate_whenDateParamProvided() throws Exception {
+        mockMvc.perform(get("/api/solardata")
+                .param("city", "Budapest")
+                .param("date", "2026-06-21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-06-21"));
+
+        verify(solarService).getSolarData(anyDouble(), anyDouble(), eq(LocalDate.of(2026, 6, 21)));
     }
 
     private void performGetSolarDataRequest(String city) throws Exception {

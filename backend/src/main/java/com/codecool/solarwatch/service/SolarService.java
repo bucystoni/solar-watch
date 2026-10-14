@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.LocalDate;
 
 @Service
 public class SolarService {
@@ -18,12 +19,13 @@ public class SolarService {
         this.webClient = webClient;
     }
 
-    public SolarData getSolarData(double latitude, double longitude) {
+    public SolarData getSolarData(double latitude, double longitude, LocalDate date) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2")
                         .queryParam("lat", latitude)
                         .queryParam("lng", longitude)
+                        .queryParam("date", date)
                         .build())
                 .retrieve()
                 .bodyToMono(SolarData.class).block(Duration.ofSeconds(5));
