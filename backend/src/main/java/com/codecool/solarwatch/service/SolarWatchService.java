@@ -10,7 +10,10 @@ import com.codecool.solarwatch.repository.SolarTimeRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Locale;
 
 @Service
@@ -19,19 +22,24 @@ public class SolarWatchService {
     private final SolarTimeRepository solarTimeRepository;
     private final GeocodingService geocodingService;
     private final SolarService solarService;
+    private final Clock clock;
 
-    public SolarWatchService(CityRepository cityRepository, SolarTimeRepository solarTimeRepository, GeocodingService geocodingService, SolarService solarService) {
+    public SolarWatchService(CityRepository cityRepository, SolarTimeRepository solarTimeRepository, GeocodingService geocodingService, SolarService solarService, Clock clock) {
         this.cityRepository = cityRepository;
         this.solarTimeRepository = solarTimeRepository;
         this.geocodingService = geocodingService;
         this.solarService = solarService;
+        this.clock = clock;
     }
 
     @Transactional
     public SolarTimeDto getSolarData(String cityName, LocalDate date) {
-        if (date == null) date = LocalDate.now();
-
         City city = getOrCreateCity(cityName);
+        if (date == null) {
+            ZoneId zone = city.getTimezone() != null ? ZoneId.of(city.getTimezone()) : ZoneOffset.UTC;
+            date = LocalDate.now(clock.withZone(zone));
+        }
+
         return SolarTimeDto.from(getOrCreateSolarTime(city, date));
     }
 
@@ -45,6 +53,7 @@ public class SolarWatchService {
         return solarTimeRepository.findByCityAndDate(city, date)
                 .orElseGet(() -> {
                     SolarData data = solarService.getSolarData(city.getLatitude(), city.getLongitude(), date);
+                    city.setTimezone(data.timezone());
                     return solarTimeRepository.save(new SolarTime(date, data.sunrise(), data.sunset(), city));
                 });
     }

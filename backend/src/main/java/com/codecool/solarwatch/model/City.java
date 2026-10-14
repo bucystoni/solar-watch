@@ -15,6 +15,7 @@ public class City {
     private double latitude;
     private String state;
     private String country;
+    private String timezone;
 
     @OneToMany(mappedBy = "city", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SolarTime> solarTimes = new ArrayList<>();
@@ -49,6 +50,14 @@ public class City {
 
     public String getState() {
         return state;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public Long getId() {
