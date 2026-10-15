@@ -10,6 +10,7 @@ public class City {
     @Id
     @GeneratedValue
     private Long id;
+    @Column(unique = true)
     private String name;
     private double longitude;
     private double latitude;

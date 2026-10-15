@@ -35,7 +35,7 @@ public class CityAuthorizationIntegrationTests {
     @Test
     @WithMockUser(roles = "USER")
     void createCity_returns403_whenUnauthorized() throws Exception {
-        CityDto city = new CityDto(null, "Budapest", 1, 2, "Pest", "Hungary", "Europe/Hungary");
+        CityDto city = new CityDto(null, "Budapest", 1, 2, "Pest", "Hungary", "Europe/Budapest");
 
         mockMvc.perform(post("/api/cities")
                 .contentType(MediaType.APPLICATION_JSON)
