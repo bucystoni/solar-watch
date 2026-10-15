@@ -8,11 +8,14 @@
 
 A full-stack web app that tells you when the sun rises and sets in any city. Type a city name, and a Spring Boot REST API resolves it to coordinates, fetches sunrise and sunset times from public APIs, and caches both in PostgreSQL, so repeat lookups never leave the database. Times are shown on the city's own clock, not the viewer's. Access is protected by stateless JWT authentication with user and admin roles.
 
+![SolarWatch showing sunrise and sunset in Tokyo](docs/screenshot.png)
+
 ## Features
 
 - Register, log in, and stay logged in across page reloads
-- Look up sunrise and sunset for any city, for today or any given date
-- Times are shown in the city's local timezone, and "today" means today in that city
+- Look up sunrise and sunset for any city, for today or a date picked in the search form
+- Times are shown in the city's local timezone
+- A day bar shows how much of the 24 hours is daylight, along with the day length
 - City lookup is case-insensitive, and alternate spellings (e.g. `Budapeszt`) resolve to the same cached city
 - Cities and solar times are cached in PostgreSQL after the first lookup
 - Role-based access: every logged-in user can read, only admins can create, update or delete cities
@@ -20,8 +23,8 @@ A full-stack web app that tells you when the sun rises and sets in any city. Typ
 
 ## Technical highlights
 
-- **Read-through cache in the database.** `SolarWatchService` checks PostgreSQL first and only calls the external APIs on a miss, then stores the result. A unique constraint on `(city_id, date)` keeps one `SolarTime` row per city per day. On a city miss, the geocoder's canonical name is checked again before inserting, so different spellings of the same city never create duplicate rows.
-- **Timezone-correct times.** PostgreSQL's `timestamp with time zone` stores only the instant, not the original offset. So the app stores the instant, stores the city's IANA timezone (e.g. `Asia/Tokyo`) separately, and converts at the edge: in the response DTO on the backend, and with `Intl` in the browser.
+- **Read-through cache in the database.** `SolarWatchService` checks PostgreSQL first and only calls the external APIs on a miss, then stores the result. A unique constraint on `(city_id, date)` keeps one `SolarTime` row per city per day.
+- **Timezone-correct times.** The app stores the instant, and the city's IANA timezone (e.g. `Asia/Tokyo`) separately, and converts at the edge: in the response DTO on the backend, and with the browser's built-in date formatting on the frontend. The day bar is positioned from the same formatted times, so the text and the bar always agree.
 - **Testable time.** The default date comes from an injected `java.time.Clock`, so tests can freeze time and verify city-local "today" across a date boundary.
 - **DTOs at the API boundary.** JPA entities never leave the service layer; endpoints return records such as `SolarTimeDto`, so storage changes don't leak into the API contract.
 - **Stateless JWT authentication.** A custom `OncePerRequestFilter` validates the `Bearer` token on every request. Server-side sessions are disabled, passwords are hashed with BCrypt, and tokens are HMAC-SHA signed with a one-hour expiry.
@@ -91,7 +94,7 @@ solar-watch/
 └── frontend/                     # React + Vite single-page app
     └── src/
         ├── context/              # auth context, AuthProvider, useAuth hook
-        ├── components/           # ProtectedRoute, SolarTime
+        ├── components/           # ProtectedRoute, SolarTime (result view and day bar)
         └── pages/                # Login, Register, SolarWatch, NotFound
 ```
 
@@ -203,13 +206,20 @@ The suite covers the register-and-login round trip, `401` for unauthenticated re
 - The frontend doesn't log out when the token expires; an expired session
   only shows an error message.
 - The API base URL (`http://localhost:8080`) and the CORS origin are hardcoded.
+- The solar lookup holds a database transaction while calling the external
+  APIs, which can exhaust the connection pool under heavy concurrent load.
+- The day bar assumes sunrise comes before sunset on the same local day, so
+  it doesn't handle polar day or polar night yet.
 
 ## Roadmap
 
 - Fix the known issues above
 - Add the frontend to Docker Compose, and a multi-stage Dockerfile so no local build is needed
-- UI styling
+
+## How this was built
+
+I built SolarWatch during the Codecool program, through several tutorial projects building on each other. I used Claude as a mentor for code review and debugging: it pointed out bugs and explained the concepts, and I wrote the backend fixes and their tests myself. The UI design direction, the CSS and the day-bar component were generated with Claude's help and then reviewed and adapted by me. Commits with AI-generated code carry a `Co-authored-by: Claude` trailer.
 
 ## Author
 
-Built by [@bucystoni](https://github.com/bucystoni) during the [Codecool](https://codecool.com) full-stack developer program.
+Built by [@bucystoni](https://github.com/bucystoni) during the [CodeCool](https://codecool.com) full-stack developer program.

@@ -35,7 +35,7 @@ export default function RegisterPage() {
     }
 
     return (<div>
-    <h1>RegisterPage</h1>
+    <h1>Register</h1>
         {error && <p role={"alert"}>{error}</p>}
         <form onSubmit={handleSubmit}>
             <label htmlFor={"username"}>Username</label>

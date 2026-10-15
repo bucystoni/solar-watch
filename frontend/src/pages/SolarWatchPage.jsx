@@ -1,14 +1,15 @@
-import { useState } from "react"
+import {useState} from "react"
 import {useAuth} from "../context/useAuth.js";
 import SolarTime from "../components/SolarTime";
 
 export default function SolarWatchPage() {
     const [city, setCity] = useState("");
+    const [date, setDate] = useState("");
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const { token } = useAuth();
+    const {token} = useAuth();
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -17,10 +18,13 @@ export default function SolarWatchPage() {
         setLoading(true);
 
         try {
-            const response = await fetch(`http://localhost:8080/api/solardata?city=${encodeURIComponent(city)}`, {
-                method: "GET",
-                headers: { Authorization: `Bearer ${token}` }
-            }
+            const params = new URLSearchParams({city});
+            if (date) params.set("date", date);
+
+            const response = await fetch(`http://localhost:8080/api/solardata?${params}`, {
+                    method: "GET",
+                    headers: {Authorization: `Bearer ${token}`}
+                }
             )
 
             if (!response.ok) {
@@ -47,13 +51,18 @@ export default function SolarWatchPage() {
     }
 
     return (<div>
-        <h1>SolarWatch</h1>
         {error && <p role="alert">{error}</p>}
-        <form onSubmit={handleSubmit}>
-            <label htmlFor="city">Choose a city</label>
-            <input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
+        <form onSubmit={handleSubmit} className="search">
+            <div className="field">
+                <label htmlFor="city">City</label>
+                <input id="city" value={city} onChange={(e) => setCity(e.target.value)}/>
+            </div>
+            <div className="field">
+                <label htmlFor="date">Date</label>
+                <input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)}/>
+            </div>
             <button type="submit" disabled={loading}>
-                {loading ? "Loading…" : "Show solar data"}
+                {loading ? "Loading…" : "Show sun times"}
             </button>
         </form>
         {result && <SolarTime result={result}></SolarTime>}
