@@ -1,6 +1,7 @@
 import {useState} from "react"
 import {useAuth} from "../context/useAuth.js";
 import SolarTime from "../components/SolarTime";
+import { baseUrl } from "../config.js";
 
 export default function SolarWatchPage() {
     const [city, setCity] = useState("");
@@ -21,7 +22,7 @@ export default function SolarWatchPage() {
             const params = new URLSearchParams({city});
             if (date) params.set("date", date);
 
-            const response = await fetch(`http://localhost:8080/api/solardata?${params}`, {
+            const response = await fetch(`${baseUrl}/api/solardata?${params}`, {
                     method: "GET",
                     headers: {Authorization: `Bearer ${token}`}
                 }
